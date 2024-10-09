@@ -15,14 +15,15 @@ import {
   walletConnectedState,
   activeWalletState,
   sessionDataState,
-} from "@/global/recoil-store/walletState"; // Import your atoms
+} from "@/store/recoil-store/walletState"; // Import your atoms
 import { client } from "@/lib/client";
 import { Button } from "../ui/button";
 import { redirect, useRouter } from "next/navigation";
 import { defineChain } from "thirdweb";
 import { createWallet } from "thirdweb/wallets";
-import { signin, signout } from "@/actions/signin";
-
+import { getSessionStatus, signin, signout } from "@/actions/signin";
+import { verifyRegisteredUser } from "@/actions/registartion";
+import { auth } from "@/auth";
 
 const MainnetChain = defineChain({
   id: 56, // BNB Mainnet chain ID
@@ -52,10 +53,24 @@ const wallets = [
   createWallet("io.zerion.wallet"),
   createWallet("pro.tokenpocket"),
 ];
+interface SuccessResponse {
+  success: boolean;
+}
 
-interface ValueTypes{
-  publicAddress:string;
-  signedNonce:string;
+interface ErrorResponse {
+  error: any;
+}
+interface ValueTypes {
+  publicAddress: string;
+  signedNonce: string;
+}
+
+type SigninResponse = SuccessResponse | ErrorResponse;
+
+function isSuccessResponse(
+  response: SigninResponse
+): response is SuccessResponse {
+  return "success" in response && response.success;
 }
 
 const WalletConnect = () => {
@@ -63,9 +78,8 @@ const WalletConnect = () => {
   const wallet = useActiveWallet();
   const { connect, isConnecting } = useConnectModal();
   const { disconnect } = useDisconnect();
-  const { data } = useSession();
   const router = useRouter();
-  const [isPending,startTransition] = useTransition()
+  const [isPending, startTransition] = useTransition();
 
   const [activeAccountAddress, setActiveAccountAddress] =
     useRecoilState(activeAccountState);
@@ -74,81 +88,80 @@ const WalletConnect = () => {
   const setActiveWallet = useSetRecoilState(activeWalletState);
   const setSessionData = useSetRecoilState(sessionDataState);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [user, setUser] = useState<boolean>(false);
 
-  
   async function onSignInWithCrypto() {
     try {
       const publicAddress = activeAccount?.address;
+
+
       console.log("Public address:", publicAddress);
-  
+
       if (!publicAddress) {
         throw new Error(
           "Active account is not available or does not have an address."
         );
       }
-  
+
       // Update Recoil state with the active account address
       setActiveAccountAddress(publicAddress);
       setWalletConnected(true);
       setActiveWallet(wallet);
-  
-      await new Promise((resolve) => setTimeout(resolve, 100));
-  
-      const response = await fetch("/api/auth/crypto", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ publicAddress }),
-      });
-      
-     
-      const responseData = await response.json();
-      console.log("res data is ",responseData)
-  
- 
-  
 
-     
-  
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const signedNonce = await activeAccount?.signMessage({
-        message: responseData.nonce,
+        message:
+          "Sign the message to confirmation, this action not causes any gas fee",
       });
       console.log("Signed nonce:", signedNonce);
-  
-    
 
+      const isRegistered = await verifyRegisteredUser(publicAddress);
+      console.log('isRegistered',isRegistered)
 
-      // const ok = await signIn('crypto',{
-      //   publicAddress,
-      //   signedNonce,
-      //   redirect:false
-      // })
+      
+      if (isRegistered) {
+        const response = await fetch("/api/auth/crypto", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({publicAddress }),
+        });
 
-      // router.push('/dashboard')
+        const responseData = await response.json();
+        console.log("res data is ", responseData);
 
-      // console.log("ok ",ok)
+        const signedNonce = await activeAccount?.signMessage({
+          message: responseData.nonce,
+        });
+        console.log("Signed nonce:", signedNonce);
 
-      const values:ValueTypes={
-        publicAddress,
-        signedNonce
+        const values: ValueTypes = {
+          publicAddress,
+          signedNonce,
+        };
+
+        const res: SigninResponse = await signin(values);
+
+        if (isSuccessResponse(res)) {
+          router.push("/dashboard");
+          return;
+        }
       }
 
-      signin(values)
 
-
-  
     } catch (error) {
       console.log("Error:", error);
     }
   }
-  
-
 
   const signedTransactionCall = async () => {
+    console.log("called")
     if (activeAccount?.address) {
       setActiveAccountAddress(activeAccount.address);
-      if (!data?.user?.wallet_address) {
+      console.log("user is ",user)
+      if (!user) {
         await onSignInWithCrypto();
       }
     }
@@ -157,15 +170,35 @@ const WalletConnect = () => {
   async function handleDisconnect() {
     if (wallet) {
       disconnect(wallet);
-      const isSignout =   await signout()
-      console.log("isSignout",isSignout)
+      const isSignout = await signout();
+      console.log("isSignout", isSignout);
       setActiveAccountAddress(null); // Reset Recoil state
       setWalletConnected(false);
       setActiveWallet(null);
+      setUser(false)
       console.log("done");
     }
     console.log("wallet disconnected ", wallet);
   }
+
+  useEffect(() => {
+    // Define an async function inside useEffect
+    const checkSessionStatus = async () => {
+      try {
+        const status = await getSessionStatus();
+        console.log("status is ",status)
+        setUser(status);
+      } catch (error) {
+        console.error('Failed to get session status:', error);
+        setUser(false);
+      } finally {
+        setIsSessionLoading(false);
+      }
+    };
+
+    // Call the async function
+    checkSessionStatus();
+  }, []); // Dependency array can include dependencies if needed
 
   useEffect(() => {
     // Simulate session loading
@@ -178,18 +211,18 @@ const WalletConnect = () => {
 
   useEffect(() => {
     if (activeAccount?.address && !isSessionLoading) {
+
       console.log("wallet is ", activeAccount.address);
       console.log("wallet active", wallet);
-      console.log("is reg", data?.user.isRegistered);
       setActiveAccountAddress(activeAccount.address);
       setWalletConnected(true);
       setActiveWallet(wallet);
+      console.log("user is ",user)
 
       const timer = setTimeout(() => {
-        if (!data?.user) {
-          console.log("data", data);
-          console.log("data . user ", data?.user);
-          console.log("data user address ", data?.user?.wallet_address);
+        if (!user ) {
+          console.log("user", user);
+
           console.log("hello");
           onSignInWithCrypto();
         }

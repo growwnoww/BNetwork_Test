@@ -4,7 +4,7 @@ import { useRecoilValue } from "recoil";
 import {
   activeAccountState,
   walletConnectedState,
-} from "@/global/recoil-store/walletState";
+} from "@/store/recoil-store/walletState";
 import { useActiveAccount, useActiveWalletConnectionStatus } from "thirdweb/react";
 import { useSession } from "next-auth/react";
 import { auth } from "@/auth";

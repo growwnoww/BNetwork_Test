@@ -11,10 +11,7 @@ export const {
 } = NextAuth({
     callbacks: {
         async session({ session, token }) {
-            console.log("Session callback triggered");
-            console.log("Session before modification:", session);
-            console.log("Token in session callback:", token);
-
+         
             // Check if token has wallet_address and isRegistered
             if (token.wallet_address) {
                 // Safely add properties to the session.user object

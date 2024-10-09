@@ -29,22 +29,6 @@ export default function RegistrationPage() {
       <p className="text-balance text-muted-foreground/80">
       Start Your Journey on Our BNB Blockchain-Powered Crowdfunding Platform.</p>
     </div>
-    {/* <div className="grid gap-4">
-      <div className="grid gap-2">
-        <Label htmlFor="address">Sponser Address</Label>
-        <Input
-          id="address"
-          type="text"
-          placeholder="0x01453fdDv.....U8K99"
-          required
-        />
-      </div>
-    
-      <Button type="submit" className="w-full">
-        Verify Sponser
-      </Button>
-     
-    </div> */}
     <VerifySponsor/>
     <div className="mt-4 text-center text-sm">
       Don&apos;t have sponser?{" "}

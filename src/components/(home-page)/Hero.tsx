@@ -2,12 +2,14 @@
 import React from "react";
 import { GradualSpacingText } from "../texts/GradualSpacing";
 import { HeroHighlightDemo } from "./backgrounds/HeroHighlight";
+import WalletConnect from "../buttons/wallet-connect";
 
 export function Hero() {
   return (
-    <div className="h-[50rem] w-screen  dark:bg-grid-small-white/[0.5] bg-grid-small-black/[0.4] relative ">
+    <div className="h-[50rem] w-screen   relative ">
       {/* Radial gradient for the container to give a faded look */}
      <HeroHighlightDemo/>
+     <WalletConnect/>
     </div>
   );
 }

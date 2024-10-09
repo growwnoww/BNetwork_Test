@@ -5,7 +5,7 @@ const products = [
   {
     id: 1,
     name: 'Earthen Bottle',
-    href: '/dashboard/bnsystem/1/5',
+    href: '/dashboard/bnsystem/1/1',
     price: '$5',
     imageSrc: 'EarthImg',
     imageAlt: 'Tall slender porcelain bottle with natural clay textured body and cork stopper.',
@@ -13,7 +13,7 @@ const products = [
   {
     id: 2,
     name: 'Nomad Tumbler',
-    href: '/dashboard/bnsystem/1/10',
+    href: '/dashboard/bnsystem/1/2',
     price: '$10',
     imageSrc: 'MoonImg',
     imageAlt: 'Olive drab green insulated bottle with flared screw lid and flat top.',
@@ -21,7 +21,7 @@ const products = [
   {
     id: 3,
     name: 'Focus Paper Refill',
-    href: '/dashboard/bnsystem/1/25',
+    href: '/dashboard/bnsystem/1/3',
     price: '$25',
     imageSrc: 'MarImg',
     imageAlt: 'Person using a pen to cross a task off a productivity paper card.',
@@ -29,7 +29,7 @@ const products = [
   {
     id: 4,
     name: 'Machined Mechanical Pencil',
-    href: '/dashboard/bnsystem/1/50',
+    href: '/dashboard/bnsystem/1/4',
     price: '$50',
     imageSrc: 'MercuryImg',
     imageAlt: 'Hand holding black machined steel mechanical pencil with brass tip and top.',
@@ -37,7 +37,7 @@ const products = [
   {
     id: 5,
     name: 'Focus Paper Refill',
-    href: '/dashboard/bnsystem/1/100',
+    href: '/dashboard/bnsystem/1/5',
     price: '$100',
     imageSrc: 'VenusImg',
     imageAlt: 'Person using a pen to cross a task off a productivity paper card.',
@@ -45,7 +45,7 @@ const products = [
   {
     id: 6,
     name: 'Machined Mechanical Pencil',
-    href: '/dashboard/bnsystem/1/250',
+    href: '/dashboard/bnsystem/1/6',
     price: '$250',
     imageSrc: 'JupiterImg',
     imageAlt: 'Hand holding black machined steel mechanical pencil with brass tip and top.',
@@ -53,7 +53,7 @@ const products = [
   {
     id: 7,
     name: 'Focus Paper Refill',
-    href: '/dashboard/bnsystem/1/500',
+    href: '/dashboard/bnsystem/1/7',
     price: '$500',
     imageSrc: 'SaturnImg',
     imageAlt: 'Person using a pen to cross a task off a productivity paper card.',
@@ -61,7 +61,7 @@ const products = [
   {
     id: 4,
     name: 'Machined Mechanical Pencil',
-    href: '/dashboard/bnsystem/1/1000',
+    href: '/dashboard/bnsystem/1/8',
     price: '$1000',
     imageSrc: 'UranusImg',
     imageAlt: 'Hand holding black machined steel mechanical pencil with brass tip and top.',
@@ -69,7 +69,7 @@ const products = [
   {
     id: 3,
     name: 'Focus Paper Refill',
-    href: '#',
+    href: '/dashboard/bnsystem/1/9',
     price: '$2500',
     imageSrc: 'NeptuneImg',
     imageAlt: 'Person using a pen to cross a task off a productivity paper card.',
@@ -77,7 +77,7 @@ const products = [
   {
     id: 4,
     name: 'Machined Mechanical Pencil',
-    href: '#',
+    href: '/dashboard/bnsystem/1/10',
     price: '$5000',
     imageSrc: 'PlutoImg',
     imageAlt: 'Hand holding black machined steel mechanical pencil with brass tip and top.',

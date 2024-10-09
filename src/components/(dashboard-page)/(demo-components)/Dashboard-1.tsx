@@ -34,7 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { BNWalletSheet } from "@/components/sheet/bnwallet-sheet";
-import { signOut, useSession } from "next-auth/react";
+import {  useSession } from "next-auth/react";
 import {
   useActiveAccount,
   useActiveWallet,
@@ -44,10 +44,11 @@ import { useRecoilState } from "recoil";
 import {
   activeAccountState,
   walletConnectedState,
-} from "@/global/recoil-store/walletState";
+} from "@/store/recoil-store/walletState";
+import { signout } from "@/actions/signin";
+import { useRouter } from "next/navigation";
 
 export function Dashboard({ children }: { children: React.ReactNode }) {
-  const session = useSession();
   const activeAccount = useActiveAccount();
   const { disconnect } = useDisconnect();
   const wallet = useActiveWallet();
@@ -55,15 +56,18 @@ export function Dashboard({ children }: { children: React.ReactNode }) {
     useRecoilState(activeAccountState);
   const [walletConnected, setWalletConnected] =
     useRecoilState(walletConnectedState);
+  const router = useRouter()
 
 
     
 
   const handleDisconnect = async () => {
     if (wallet) {
+      const redirectUrl = await signout();
+      if(redirectUrl?.redirect){
+        router.push('/')
+      }
       disconnect(wallet);
-
-      signOut();
       setActiveAccountAddress(null); // Reset Recoil state
       setWalletConnected(false);
       console.log("done");
@@ -75,11 +79,11 @@ export function Dashboard({ children }: { children: React.ReactNode }) {
   };
   return (
     <div className="flex flex-col ">
-      <header className="fixed w-full  flex h-14 items-center gap-4 border-b bg-muted/40 backdrop-blur-xl px-4 lg:h-[60px] lg:px-6 ">
+      <header className="fixed w-full flex h-14 items-center gap-4 border-b  backdrop-blur-xl px-4 lg:h-[60px] lg:px-6 z-50 ">
         <div className="w-full flex flex-1 items-center justify-end ">
           <div className="hidden lg:block mr-80">
             <div className="flex">
-              <p>{session.data?.user.wallet_address}</p>
+              <p>{}</p>
               <Button variant="secondary" size="lg" onClick={handleDisconnect}>
                 Disconnect
               </Button>
@@ -93,7 +97,7 @@ export function Dashboard({ children }: { children: React.ReactNode }) {
             <Button
               variant="outline"
               size="icon"
-              className="shrink-0 md:hidden"
+              className="shrink-0 lg:hidden"
             >
               <Menu className="h-5 w-5" />
               <span className="sr-only">Toggle navigation menu</span>
@@ -166,7 +170,7 @@ export function Dashboard({ children }: { children: React.ReactNode }) {
           </SheetContent>
         </Sheet>
       </header>
-      <div className="mt-16">{children}</div>
+      <div className="mt-14 ">{children}</div>
     </div>
   );
 }

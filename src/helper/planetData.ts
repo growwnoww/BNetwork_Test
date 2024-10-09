@@ -1,0 +1,76 @@
+
+
+export const PlanetData  =  [
+    {
+        id:1,
+        title:'Earth',
+        description:'',
+        image:'/Earth.png',
+        price:'$5'
+    },
+    {
+        id:2,
+        title:'Moon',
+        description:'',
+        image:'/Moon.png',
+        price:'$10'
+    },
+    {
+        id:3,
+        title:'Mars',
+        description:'',
+        image:'/Mars.png',
+        price:'$25'
+    },
+    {
+        id:4,
+        title:'Mercury',
+        description:'',
+        image:'/Mercury.png',
+        price:'$50'
+    },
+    {
+        id:5,
+        title:'Venus',
+        description:'',
+        image:'/Venus.png',
+        price:'$100'
+    },
+    {
+        id:6,
+        title:'Jupiter',
+        description:'',
+        image:'/Jupiter.png',
+        price:'$250'
+    },
+    {
+        id:7,
+        title:'Saturn',
+        description:'',
+        image:'/Saturn.png',
+        price:'$500'
+    },
+    {
+        id:8,
+        title:'Uranus',
+        description:'',
+        image:'/Uranus.png',
+        price:'$1000'
+    },
+    {
+        id:9,
+        title:'Neptune',
+        description:'',
+        image:'/Neptune.png',
+        price:'$2500'
+    },
+    {
+        id:10,
+        title:'Pluto',
+        description:'',
+        image:'/Pluto.png',
+        price:'$5000'
+    },
+
+
+]

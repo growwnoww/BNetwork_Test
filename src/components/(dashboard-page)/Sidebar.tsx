@@ -26,18 +26,18 @@ import {
   CardDescription,
   CardContent,
 } from "../ui/card";
+import { PersonIcon } from "@radix-ui/react-icons";
 
 type Props = {};
 
 const Sidebar = (props: Props) => {
   return (
-    <div className="hidden border-r bg-muted/40 md:block">
+    <div className="hidden border-r  lg:block">
       <div className="flex max-h-screen h-full  flex-col gap-2 fixed w-72">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 ">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <Package2 className="h-6 w-6" />
             <div className="flex  items-start justify-center ">
-           
               <p className="text-xl font-extrabold text-yellow-400">Believe</p>
               <p className="text-xl font-extrabold ">Network</p>
             </div>
@@ -49,10 +49,10 @@ const Sidebar = (props: Props) => {
         </div>
 
         <div className="flex-1 ">
-          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+          <nav className="grid items-start px-2 text-sm font-medium lg:px-6  w-fit ">
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 rounded-2xl bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
+              className="flex items-center gap-3 rounded-2xl bg-muted w-full  px-3 py-2 text-primary transition-all hover:text-primary"
             >
               <Home className="h-4 w-4" />
               Home
@@ -68,21 +68,28 @@ const Sidebar = (props: Props) => {
               </Badge>
             </Link>
             <Link
-              href="#"
+              href="/dashboard/nft"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
             >
               <Package className="h-4 w-4" />
               Royalty NFT{" "}
             </Link>
             <Link
-              href="#"
+              href="/dashboard/newbeliever"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+            >
+              <PersonIcon className="h-4 w-4" />
+              Create New Believer
+            </Link>
+            <Link
+              href="/dashboard/income"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
             >
               <Users className="h-4 w-4" />
               Income
             </Link>
             <Link
-              href="#"
+              href="/dashboard/directteam"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
             >
               <LineChart className="h-4 w-4" />
@@ -91,8 +98,8 @@ const Sidebar = (props: Props) => {
           </nav>
         </div>
 
-        <div className="mt-auto p-4">
-          <Card x-chunk="dashboard-02-chunk-0">
+        <div className="mt-auto p-4 w-fit">
+          <Card x-chunk="dashboard-02-chunk-0 w-fit">
             <CardHeader className="p-2 pt-0 md:p-4">
               <CardTitle>NFT Bounce Timer</CardTitle>
               <CardDescription>

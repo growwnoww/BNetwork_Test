@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   console.log("i am called")
   const { publicAddress } = await req.json();
 
+
   // Generate a nonce
   const nonce = crypto.randomBytes(32).toString("hex");
 

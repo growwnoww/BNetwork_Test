@@ -26,6 +26,7 @@ async function authorizeWeb3Wallet(
   
   
     const { publicAddress, signedNonce } = credentials;
+
   
     const user = await db.user.findUnique({
       where: {

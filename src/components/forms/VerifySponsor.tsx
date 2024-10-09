@@ -1,6 +1,6 @@
 "use client";
 import { verifyRegisteredUser, verifySponsor } from "@/actions/registartion";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -8,53 +8,113 @@ import { useFormStatus } from "react-dom";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import Web3 from "web3";
 import { ethers5Adapter } from "thirdweb/adapters/ethers5";
-import { client } from "@/lib/client";
+import { client, TestnetChain } from "@/lib/client";
 import { defineChain } from "thirdweb";
-import { useActiveAccount } from "thirdweb/react";
+import { useActiveAccount, useActiveWallet } from "thirdweb/react";
 import { ethers } from "ethers";
 import {
   cosmosnetworkAbi,
   cosmosnetworkAddress,
 } from "@/contract/cosmosnetwork";
+import { useRecoilState, useSetRecoilState } from "recoil";
+import {
+  activeAccountState,
+  activeWalletState,
+  sessionDataState,
+  walletConnectedState,
+} from "@/store/recoil-store/walletState";
+import { signin, SignInResponse } from "@/actions/signin";
+import { getCosmosContractInstance } from "@/contract/cosmosnetwork/cosmos-contract-instance";
+import { RegistereBulkTypes, registrationInBulk } from "@/actions/bulk/register";
+interface SuccessResponse {
+  success: boolean;
+}
 
-const web3 = new Web3();
+interface ErrorResponse {
+  error: any;
+}
+interface ValueTypes {
+  publicAddress: string;
+  signedNonce: string;
+}
 
-export const MainnetChain = defineChain({
-  id: 56, // BNB Mainnet chain ID
-  rpc: "https://bsc-dataseed.binance.org/", // RPC URL for BNB Mainnet
-  nativeCurrency: {
-    name: "Binance Coin",
-    symbol: "BNB",
-    decimals: 18,
-  },
-});
-
-export const TestnetChain = defineChain({
-  id: 97, // BNB Testnet chain ID
-  rpc: "https://data-seed-prebsc-1-s1.binance.org:8545/", // RPC URL for BNB Testnet
-  nativeCurrency: {
-    name: "Binance Coin",
-    symbol: "BNB",
-    decimals: 18,
-  },
-});
+type SigninResponse = SuccessResponse | ErrorResponse;
 
 const VerifySponsor = () => {
   const router = useRouter();
   const { pending } = useFormStatus();
   const { data } = useSession();
   const activeAccount = useActiveAccount();
+  const [activeAccountAddress, setActiveAccountAddress] =
+    useRecoilState(activeAccountState);
+  const [walletConnected, setWalletConnected] =
+    useRecoilState(walletConnectedState);
+  const setActiveWallet = useSetRecoilState(activeWalletState);
+  const setSessionData = useSetRecoilState(sessionDataState);
+  const wallet = useActiveWallet();
+  const [usersdetails,setUsersDetails] = useState<RegistereBulkTypes[]>([])
+
+  function isSuccessResponse(
+    response: SigninResponse
+  ): response is SuccessResponse {
+    return "success" in response && response.success;
+  }
+
+  async function onSignInWithCrypto() {
+    try {
+      const publicAddress = activeAccount?.address;
+      console.log("Public address:", publicAddress);
+
+      if (!publicAddress) {
+        throw new Error(
+          "Active account is not available or does not have an address."
+        );
+      }
+
+      // Update Recoil state with the active account address
+      setActiveAccountAddress(publicAddress);
+      setWalletConnected(true);
+      setActiveWallet(wallet);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const response = await fetch("/api/auth/crypto", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ publicAddress }),
+      });
+
+      const responseData = await response.json();
+      console.log("res data is ", responseData);
+
+      const signedNonce = await activeAccount?.signMessage({
+        message: responseData.nonce,
+      });
+      console.log("Signed nonce:", signedNonce);
+
+      const values: ValueTypes = {
+        publicAddress,
+        signedNonce,
+      };
+
+      const res: SigninResponse = await signin(values);
+
+      if (isSuccessResponse(res)) {
+        router.push("/dashboard");
+        return;
+      }
+    } catch (error) {
+      console.log("Error:", error);
+    }
+  }
 
   const registerUser = async (sponsorAddress: string) => {
     try {
       // Ensure that the correct chain configuration is being passed
-      const provider = ethers5Adapter.provider.toEthers({
-        client,
-        chain: TestnetChain,
-      });
- 
+  
 
       const signer = await ethers5Adapter.signer.toEthers({
         client,
@@ -65,13 +125,10 @@ const VerifySponsor = () => {
       console.log("signer", signer);
 
       const gasPrice = await signer.getGasPrice();
-      const gasPriceOg = ethers.BigNumber.from(gasPrice).toNumber();
 
-
-      // Validate that cosmosnetworkAddress is defined and valid
 
       const contractInstance = new ethers.Contract(
-        "0x04DADba64bc3D2A8e843D17086582b631765eAcB",
+        "0xc190CDF5D2a53a18d4932d5E5af5FCa63eEcAFA4",
         cosmosnetworkAbi,
         signer
       );
@@ -80,7 +137,8 @@ const VerifySponsor = () => {
       const gasFee = await contractInstance.gasfees();
       console.log(`gasprice is ${gasPrice} and gas fee ${gasFee}`);
       const convert = Number(gasFee?._hex).toString();
-  
+
+      console.log("convert",convert)
 
       const registration = await contractInstance.registrations(
         sponsorAddress,
@@ -93,9 +151,15 @@ const VerifySponsor = () => {
 
       await registration.wait();
 
+      if (registration.hash) {
+        toast.success("Registration Successfully");
+        await onSignInWithCrypto();
+      }
+
       console.log("done ", registration);
     } catch (error) {
       console.log("Something went wrong", error);
+      toast.error("Registration Failed");
     }
   };
 
@@ -111,13 +175,11 @@ const VerifySponsor = () => {
         toast.success("Sponsor verified!");
         await registerUser(response.address!);
 
-        const sponsorAddress = formData.get("address")
-       
+        const sponsorAddress = formData.get("address");
 
-        const result = await verifyRegisteredUser(activeAccount?.address!,response.address!)
+        const result = await verifyRegisteredUser(activeAccount?.address!);
 
-        console.log("verify client",result)
-
+        console.log("verify client", result);
       } else {
         // Handle error or display message
         toast.error("Sponsor Address is not registered");
@@ -127,6 +189,96 @@ const VerifySponsor = () => {
       alert("An error occurred. Please try again.");
     }
   };
+
+
+  const bulkRegistration = async ()=>{
+
+    try {
+
+      if(!activeAccount?.address){
+        toast.error("no wallet connected");
+        return;
+      }
+      const usersArray:RegistereBulkTypes[]= [];
+
+
+
+
+      const cosmosInstance = await getCosmosContractInstance(activeAccount);
+
+      const totalUser = await cosmosInstance.regCounter();
+      const totalCount = Number(totalUser._hex);
+
+      for (let i = 365; i <= 864; i++) { // limit to first 10 users for example
+        const address = await cosmosInstance!.RegisterUserById(i);
+        const userDetailsBN = await cosmosInstance!.RegisterUserDetails(address);
+        // const hightPlanetCount = await cosmosInstance!.UserPlannet(address);
+        const referralId =  ethers.BigNumber.from(userDetailsBN.regReferalId).toNumber()
+        let pureAddress = await cosmosInstance.RegisterUserById(referralId)
+        console.log('pure address',pureAddress)
+        
+        if(referralId === 0){
+          pureAddress = "0xF346C0856DF3e220E57293a0CF125C1322cfD778";
+        }
+
+
+        const formattedResponse:RegistereBulkTypes = {
+            wallet_address: userDetailsBN.regUser,
+            registeredTime: ethers.BigNumber.from(userDetailsBN.regTime).toNumber(),
+            regId: ethers.BigNumber.from(userDetailsBN.regId).toNumber(),
+            sponser_address: pureAddress,
+            sponser_regId: ethers.BigNumber.from(userDetailsBN.regReferalId).toNumber(),
+            // teamCount: ethers.BigNumber.from(userDetailsBN.teamCount).toNumber(),
+            // hightPlanetCount:ethers.BigNumber.from(hightPlanetCount).toNumber()
+        };
+
+
+        console.log("forrmated res ",formattedResponse)
+
+        usersArray.push(formattedResponse); 
+
+        await sendsUserDetailsToServer(formattedResponse);
+
+        
+
+        console.log(usersArray)
+
+      }
+
+
+    setUsersDetails(usersArray)
+
+
+
+
+
+
+      
+    } catch (error) {
+      console.log("something went wrong in the bulk regiseter client ",error)
+    }
+  }
+
+
+  const sendsUserDetailsToServer = async (data:RegistereBulkTypes)=>{
+
+    try {
+      console.log("data coming",data)
+
+      const res = await registrationInBulk(data)
+
+      console.log(`res status ${res.success} adn res msg ${res.msg}`)
+      
+    } catch (error) {
+      console.log("something went wrong sendsUserDetailsToServer",error)
+    }
+
+  }
+
+
+  useEffect(()=>{
+    bulkRegistration()
+  },[])
 
   return (
     <>
