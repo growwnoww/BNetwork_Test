@@ -10,7 +10,7 @@ import {
   DEFAULT_LOGIN_REDIRECT,
   publicRoutes,
 } from "./routes";
-import { Session } from "inspector/promises";
+
 
 const { auth } = NextAuth(authConfig);
 interface AuthenticatedNextRequest extends NextRequest {
