@@ -233,20 +233,20 @@ const WalletConnect = () => {
   }, [activeAccount?.address, isSessionLoading]);
 
   return (
-    <div>
+    <div className="w-full">
       {walletConnected ? (
-        <div className="flex items-center justify-center">
+        <div className=" lg:flex items-center justify-center">
           <Button
-            variant="secondary"
+            variant="destructive"
             size="sm"
-            className="rounded-2xl"
+            className="rounded-3xl py-1 px-14 lg:py-0 "
             onClick={handleDisconnect}
           >
             Disconnect
           </Button>
         </div>
       ) : (
-        <div onClick={signedTransactionCall}>
+        <div className="w-full" onClick={signedTransactionCall}>
           <ConnectButton
             chain={TestnetChain}
             client={client}
@@ -262,8 +262,8 @@ const WalletConnect = () => {
             connectButton={{
               label: "Connect Wallet",
               style: {
-                width: "100px",
-                height: "33px",
+                width: "122px",
+                height: "30px",
                 borderRadius: "30px",
               },
             }}

@@ -6,8 +6,9 @@ import { ThirdwebProvider } from "thirdweb/react";
 import { RecoilRoot } from "recoil";
 import { Toaster } from "react-hot-toast";
 import { usePathname } from "next/navigation";
-import { Navbar } from "@/components/(home-page)/Navbar";
+
 import WalletConnectionProvider from "@/providers/custom-wallet-provider";
+import HeaderRoundedWeb3 from "@/components/(home-page)/Navbar";
 
 export default function Provider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -23,7 +24,7 @@ export default function Provider({ children }: { children: React.ReactNode }) {
               enableSystem
               disableTransitionOnChange
             >
-              {pathname.startsWith("/dashboard") ? "" : <Navbar />}
+              {pathname.startsWith("/dashboard") ? "" : <HeaderRoundedWeb3 />}
               {children}
             </ThemeProvider>
           </WalletConnectionProvider>

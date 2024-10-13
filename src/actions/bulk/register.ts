@@ -2,20 +2,9 @@
 
 import { db } from "@/db/db";
 import { ServerActionRes } from "../registartion";
+import { referralsArrayType, RegistereBulkTypes } from "./type";
 
-export interface RegistereBulkTypes {
-  regId: number;
-  wallet_address: string;
-  sponser_address: string;
-  registeredTime: number;
-  sponser_regId: number;
-}
 
-interface referralsArrayType {
-  id: string;
-  wallet_address: string;
-  ancestorsNumber: number;
-}
 
 export const updateAncestors = async (sponsor: string, currentUser: string) => {
   try {
@@ -270,7 +259,7 @@ export async function registrationInBulk(
       where: { key: "BNMaxRewardsCoins" },
       data: {
         BNCoinDistributed: {
-          increment: bnCoinRegistration + bnCoinSponserReward, // Adjust for actual increments
+          increment: bnCoinRegistration + bnCoinSponserReward, 
         },
         BNMaxAirDropCoins:{
           decrement:bnCoinRegistration + bnCoinSponserReward
@@ -292,3 +281,5 @@ export async function registrationInBulk(
     };
   }
 }
+
+

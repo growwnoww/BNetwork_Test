@@ -6,10 +6,10 @@ import WalletConnect from "../buttons/wallet-connect";
 
 export function Hero() {
   return (
-    <div className="h-[50rem] w-screen   relative ">
+    <div className="h-[50rem]    relative ">
       {/* Radial gradient for the container to give a faded look */}
      <HeroHighlightDemo/>
-     <WalletConnect/>
+
     </div>
   );
 }
