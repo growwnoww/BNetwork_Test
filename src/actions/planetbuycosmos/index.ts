@@ -157,7 +157,7 @@ export const bulkPlanetBuyCosmos = async (data:BulkPlanetBuyTypes):Promise<Serve
       return {success:true,msg:"user already bought this planet"}
     }
 
-    const {planetName,planetPrice} = getPlanetDetailsById(planetNum);
+    const {planetName,planetPrice,rewardCoinAmount} = getPlanetDetailsById(planetNum);
 
     const planet = await db.$transaction(
       async (db) => {
@@ -182,6 +182,26 @@ export const bulkPlanetBuyCosmos = async (data:BulkPlanetBuyTypes):Promise<Serve
 
       
         //Distribute earnings
+
+        const planetBuyRewardCoin = await db.user.update({
+          where:{
+           wallet_address:wallet_address
+          },
+          data:{
+           bnCoinEarned:{
+             create:{
+        
+               bn_id:user.bn_id?? "",
+               coinEarnType:`${planetName} Reward`,
+               wallet_address:user.wallet_address,
+               amount:rewardCoinAmount,
+               timeStamp:new Date()
+             }
+           }
+          }
+       })
+
+       console.log("updated rewardcoin",planetBuyRewardCoin)
   
 
         return newPlanet;

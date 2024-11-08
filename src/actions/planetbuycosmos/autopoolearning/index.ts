@@ -1,69 +1,4 @@
-"use server";
-
-import { auth } from "@/auth";
 import { db } from "@/db/db";
-import { string } from "zod";
-import { cosmosautpoolType } from "../types";
-
-export const cosmosautopooldata = async (
-  planetName: string
-): Promise<cosmosautpoolType[] | null> => {
-  const session = await auth();
-  if (!session?.user.wallet_address) {
-    return null;
-  }
-  try {
-    const publicAddress = session.user.wallet_address;
-
-    const user = await db.user.findFirst({
-      where: {
-        wallet_address: publicAddress,
-      },
-      include: {
-        cosmosPlanets: true,
-      },
-    });
-
-    if (!user) {
-      return null;
-    }
-
-    const isPlanetBought = user?.cosmosPlanets.some(
-      (planet) => planet.planetName === planetName
-    );
-
-    if (!isPlanetBought) {
-      return null;
-    }
-
-    const cosMosAutoPool = await db.cosMosAutoPool.findFirst({
-      where: {
-        reg_user_address: user.wallet_address,
-        planetName: planetName,
-      },
-      include: {
-        autoPoolEarningHistory: true,
-      },
-    });
-
-    console.log("user is ", cosMosAutoPool);
-    console.log(
-      "autoPoolEarningHistory is ",
-      cosMosAutoPool?.autoPoolEarningHistory
-    );
-
-    if (!cosMosAutoPool) {
-      return null;
-    }
-
-    const data: cosmosautpoolType[] | null =
-      cosMosAutoPool.autoPoolEarningHistory;
-
-    return data;
-  } catch (error) {
-    return null;
-  }
-};
 
 type PrismaCurrentRoot = {
   id: string;
@@ -121,7 +56,9 @@ async function distributeEarnings(
       5: 0.5,
     };
 
-    const amount = planetPrice;
+    const recycleAmountHoldPosition = [53,54,55,56,57,58,59,60,61,62]
+
+    const amount = planetPrice * 0.2;
     console.log("amout is ", amount);
 
     let remainingLevel = 5;
@@ -129,6 +66,9 @@ async function distributeEarnings(
 
     let distributedLevels = new Set();
     console.log("distributedlevel ", distributedLevels);
+
+
+
 
     while (currentParentId && remainingLevel > 0) {
       console.log(
@@ -217,6 +157,65 @@ async function distributeEarnings(
         currentParentId
       );
 
+      /// check autopool member id and with current user
+
+      const isCurrentRecycleParent = await db.cosMosAutoPool.findFirst({
+        where: {
+          planetName: planetName,
+          isRoot: true,
+        },
+        include:{
+          autopoolMembers:true
+        }
+      });
+
+      console.log("isCurrentRecycleParent is ",isCurrentRecycleParent?.id)
+
+      console.log("parent id ",parentUser.id)
+
+      const isRecycledAmtHoldId = await db.children.findFirst({
+        where:{
+          parentId:parentUser.id,
+          planetName:planetName,
+          wallet_address:currentUser.reg_user_address
+        }
+      })
+
+      console.log("isRecycledAmtHoldId",isRecycledAmtHoldId)
+
+      if(isCurrentRecycleParent?.id == parentUser.id && recycleAmountHoldPosition.includes(isRecycledAmtHoldId?.childrenNumber!)){
+             
+        // find autopool  child 
+
+        const newEariningHistoryEntry = await db.earningHistory.create({
+          data: {
+            recycleNumber: currentUser.currentRecycle || 0,
+            reg_user_address: currentUser.reg_user_address,
+            bn_id: currentUser.bn_id,
+            planetName: planetName,
+            amount: 0,
+            currentPosition: currentUser.currentPosition!,
+            currentLevel: currentUser.currentLevel!,
+            autoPool: {
+              connect: { id: currentParentId },
+            },
+          },
+        });
+
+
+        console.log("newEariningHistoryEntry with no amount", newEariningHistoryEntry);
+
+        if (newEariningHistoryEntry) {
+          distributedLevels.add(parentUser.currentLevel);
+        }
+        remainingLevel--;
+        console.log("before currentnode is  no amount", currentParentId);
+        currentParentId = parentUser.parentId;
+        console.log("after currentNode is  no amount", currentParentId);
+
+
+      }
+      else{
       const newEariningHistoryEntry = await db.earningHistory.create({
         data: {
           recycleNumber: currentUser.currentRecycle || 0,
@@ -227,10 +226,11 @@ async function distributeEarnings(
           currentPosition: currentUser.currentPosition!,
           currentLevel: currentUser.currentLevel!,
           autoPool: {
-            connect: { id: currentParentId },
+            connect: { id: currentParentId! },
           },
         },
       });
+
 
       console.log("newEariningHistoryEntry", newEariningHistoryEntry);
 
@@ -241,6 +241,10 @@ async function distributeEarnings(
       console.log("before currentnode is ", currentParentId);
       currentParentId = parentUser.parentId;
       console.log("after currentNode is ", currentParentId);
+        
+      }
+
+     
     }
   } catch (error) {
     console.log("something went wrong in the distibuteEarnings ", error);
@@ -342,9 +346,7 @@ async function addChildToPlanetTreeTemporarily(
   planetName: string
 ) {
   try {
-    console.log(
-      `current root id ${currentRootId} and root address ${currentRootAddress} and user id ${userId} and ${userAddress}`
-    );
+
 
     const tempNode = await db.temporaryChildrenSchema.upsert({
       where: {
@@ -361,13 +363,13 @@ async function addChildToPlanetTreeTemporarily(
         TempChild: { select: { childId: true } },
       },
     });
-    console.log("tempNode", tempNode);
+
 
     const istempNodeAlreadyExist = tempNode.TempChild.some(
-      (child) => child.childId === userId
+      (child: any) => child.childId === userId
     );
 
-    console.log("istempNodeAlreadyExist", istempNodeAlreadyExist);
+
 
     if (istempNodeAlreadyExist) {
       return;
@@ -387,9 +389,7 @@ async function addChildToPlanetTreeTemporarily(
       },
     });
 
-    console.log("update tem", update);
 
-    console.log("everything is fine");
   } catch (error) {
     console.error("Error updating temporary children:", error);
   }
@@ -404,12 +404,11 @@ async function assignChildrenToNodesIteratively(
 ) {
   try {
     let currentNode = initialNode;
-    console.log("current Node id ", currentNode.id);
-    console.log("parent id is ", currentNode.parentId);
+
     let currentLevel = 1;
 
     while (currentLevel <= maxLevels && currentNode) {
-      console.log("current level is ", currentLevel);
+
       let parent;
 
       let parentDetails;
@@ -417,7 +416,7 @@ async function assignChildrenToNodesIteratively(
       if (currentNode.parentId) {
         parent = currentNode.parentId;
       } else {
-        console.log("no parent");
+
         let data = await findSuitableParent(planetName, currentNode.id);
         parent = data.id;
 
@@ -428,10 +427,10 @@ async function assignChildrenToNodesIteratively(
           });
           break;
         } else if (parent) {
-          console.log("hello parent ji", parent);
+
 
           currentNode.parentId = parent;
-          console.log("currentNode.parentId ", currentNode.parentId);
+
           await db.cosMosAutoPool.update({
             where: { id: currentNode.id },
             data: { parentId: parent.id },
@@ -439,26 +438,27 @@ async function assignChildrenToNodesIteratively(
         }
       }
 
-      console.log("parent id is ", parent);
+
       let parentsDetails = await db.cosMosAutoPool.findFirst({
         where: {
           id: parent,
           planetName: planetName,
         },
+        include: {
+          autopoolMembers: true,
+        },
       });
 
       if (parentsDetails) {
         if (parent) {
-          console.log("parentDetails is", parentsDetails.reg_user_address);
-
-          console.log("parent vairable has ", parent);
+       
           const parentChildrenCount = await db.children.count({
             where: {
               parentId: parent,
               planetName: planetName,
             },
           });
-          console.log("parentChildrencount ", parentChildrenCount);
+
 
           if (parentChildrenCount < 62) {
             const existingChild = await db.children.findFirst({
@@ -471,17 +471,17 @@ async function assignChildrenToNodesIteratively(
 
             // If no existing child found, create a new one
             if (!existingChild) {
+              let childNumber = parentsDetails.autopoolMembers.length;
+
               const newChild = await db.children.create({
                 data: {
                   planetName: planetName,
                   wallet_address: initialNode.reg_user_address,
+                  childrenNumber: childNumber +1,
                   parentId: parent, // Assuming parent.id is the foreign key for the autoPool
                 },
               });
-
-              console.log(
-                `parent address ${parentsDetails.reg_user_address} and currentNode adddress ${currentNode.reg_user_address}`
-              );
+;
 
               await addChildToPlanetTreeTemporarily(
                 parentsDetails.id,
@@ -492,21 +492,15 @@ async function assignChildrenToNodesIteratively(
                 newUserPosition,
                 planetName
               );
-              console.log(
-                "before current node is ass",
-                currentNode.reg_user_address
-              );
+         
               currentNode = parentsDetails; // Move to the parent node for the next iteration
-              console.log(
-                "after current node is ass ",
-                currentNode.reg_user_address
-              );
+
             } else {
-              console.error("Parent already has 62 children. Skipping.");
+
               break;
             }
           } else {
-            console.error("No parent found or assigned for node:", currentNode);
+
             break;
           }
         }
@@ -539,7 +533,7 @@ async function updateChildrenParent(
     });
 
     if (!childs) {
-      console.log("no childrens updateChildrenParent");
+
       return;
     }
     console.log(
@@ -588,10 +582,7 @@ async function transitionRootUserIfNeeded(
       return;
     }
 
-    console.log(
-      "current root children length is  ",
-      currentRoot.autopoolMembers.length
-    );
+
 
     if (currentRoot.autopoolMembers.length === 62) {
       const childrenData = await db.temporaryChildrenSchema.findMany({
@@ -601,35 +592,35 @@ async function transitionRootUserIfNeeded(
         },
       });
 
-      console.log("children data ", childrenData.length);
+
 
       const childrenToMove = childrenData ? childrenData : [];
-      console.log("children to move", childrenToMove.length);
+
 
       let shouldIncrementRecycleCount;
       let maxRecycleCount;
       let newRecycleCount;
 
-      console.log("currentRoot.recycle.length", currentRoot.recycle.length);
+
 
       if (currentRoot.recycle.length >= 1) {
         shouldIncrementRecycleCount = currentRoot.recycle.some(
-          (recycleEntry) => recycleEntry.indexMappings.length > 0
+          (recycleEntry: any) => recycleEntry.indexMappings.length > 0
         );
 
-        console.log("shouldIncrementRecycleCount", shouldIncrementRecycleCount);
+
 
         maxRecycleCount = currentRoot.recycle.reduce(
-          (max, curr) => Math.max(max, curr.recycleCount),
+          (max: any, curr: any) => Math.max(max, curr.recycleCount),
           -1
         );
-        console.log("maxRecyclecount ", maxRecycleCount);
+
 
         newRecycleCount = shouldIncrementRecycleCount
           ? maxRecycleCount + 1
           : maxRecycleCount;
 
-        console.log("newRecycleCount", newRecycleCount);
+
       } else {
         const pool = await db.cosMosAutoPool.findFirst({
           where: {
@@ -641,7 +632,7 @@ async function transitionRootUserIfNeeded(
           },
         });
 
-        console.log("pool ", pool);
+
 
         if (!pool) {
           console.log("no pool is there");
@@ -662,7 +653,7 @@ async function transitionRootUserIfNeeded(
 
       // Update recycleCount for each related RecycleMapping record
       await Promise.all(
-        currentRoot.recycle.map(async (recycleEntry) => {
+        currentRoot.recycle.map(async (recycleEntry: any) => {
           await db.recycleMapping.update({
             where: {
               id: recycleEntry.id,
@@ -692,7 +683,7 @@ async function transitionRootUserIfNeeded(
         },
       });
 
-      console.log("'another pool ", pool);
+
 
       if (!pool) {
         console.log(
@@ -701,92 +692,7 @@ async function transitionRootUserIfNeeded(
         return;
       }
 
-      // Check if there's an existing RecycleMapping record to update or create a new one
-      // const existingRecycle = await db.recycleMapping.findFirst({
-      //   where: {
-      //     autoPoolId: pool.id,
-      //   },
-      //   include: {
-      //     indexMappings: {
-      //       include: {
-      //         userIds: true,
-      //       },
-      //     },
-      //   },
-      // });
 
-      // console.log('existingRecycle',existingRecycle)
-
-      // if (existingRecycle) {
-      //   // Update the existing RecycleMapping record
-      //   await db.recycleMapping.update({
-      //     where: {
-      //       id: existingRecycle.id,
-      //     },
-      //     data: {
-      //       recycleCount: newRecycleCount,
-      //     },
-      //   });
-
-      //   // Update existing IndexMappings and create new ones
-      //   for (const child of childrenToMove) {
-      //     const existingIndexMapping = existingRecycle.indexMappings.find((im) =>
-      //       im.userIds.some((user) => user.id === child.id)
-      //     );
-
-      //     console.log("child of each loop",child.id)
-
-      //     if (existingIndexMapping) {
-      //       const  updateIndexmapping =   await db.indexMapping.update({
-      //         where: {
-      //           id: existingIndexMapping.id,
-      //         },
-      //         data: {
-      //           userLevel: child.level,
-      //           userPosition: child.position,
-      //           userIds: {
-      //             set: [{ id: child.childId }],
-      //           },
-      //         },
-      //       });
-
-      //      console.log("updateIndexmapping",updateIndexmapping)
-      //     } else {
-      //       const updateIndexmapping1 =  await db.indexMapping.create({
-      //         data: {
-      //           userLevel: child.level,
-      //           userPosition: child.position,
-      //           userIds: {
-      //             connect: [{ id: child.childId }],
-      //           },
-      //           recycleMappingId: existingRecycle.id,
-      //         },
-      //       });
-
-      //       console.log('updateIndexmapping1',updateIndexmapping1)
-      //     }
-
-      //   }
-      // } else {
-      //   // Create a new RecycleMapping record
-
-      //  const createRecycleMapping =   await db.recycleMapping.create({
-      //     data: {
-      //       recycleCount: newRecycleCount,
-      //       autoPoolId: pool.id,
-      //       indexMappings: {
-      //         create: childrenToMove.map((child) => ({
-      //           userLevel: child.level,
-      //           userPosition: child.position,
-      //           userIds: {
-      //             connect: [{ id: child.childId }],
-      //           },
-      //         })),
-      //       },
-      //     },
-      //   });
-
-      // console.log('createRecycleMapping',createRecycleMapping)
 
       // now transfer the Root user
       const updateRoot = await db.cosMosAutoPool.update({
@@ -800,7 +706,7 @@ async function transitionRootUserIfNeeded(
         },
       });
 
-      console.log("updateRoot", updateRoot);
+
 
       await db.children.updateMany({
         where: {
@@ -812,10 +718,7 @@ async function transitionRootUserIfNeeded(
       });
 
       const newParentForCurrentRootChildren = currentRoot.parentId;
-      console.log(
-        "newParentForCurrentRootChildren: -->  ",
-        newParentForCurrentRootChildren
-      );
+ 
 
       await updateChildrenParent(
         planetName,
@@ -825,7 +728,7 @@ async function transitionRootUserIfNeeded(
 
       const nextRootposition = currentRoot.currentPosition! + 1;
 
-      console.log("next root position ", nextRootposition);
+
 
       const nextRootUser = await db.cosMosAutoPool.findFirst({
         where: {
@@ -839,7 +742,7 @@ async function transitionRootUserIfNeeded(
       }
 
       const newParentForNextRoot = currentRoot.parentId;
-      console.log("new parent id for next root is  ", newParentForNextRoot);
+
 
       if (nextRootUser) {
         await db.cosMosAutoPool.update({
@@ -867,10 +770,10 @@ async function transitionRootUserIfNeeded(
       });
 
       const lastUserPosition = lastUserPositionRecord?.currentPosition || 1;
-      console.log("last user positon ", lastUserPosition);
+
 
       currentRoot.currentPosition = lastUserPosition + 1;
-      console.log("new position for root user ", lastUserPosition + 1);
+
 
       const newLevelCurrentRoot = calculateLevelFromPosition(
         lastUserPosition + 1
@@ -892,19 +795,19 @@ async function transitionRootUserIfNeeded(
         },
       });
 
-      console.log("updatePositionRoot", updatePositionRoot);
+
 
       currentRoot.currentLevel = Math.floor(
         Math.log2(currentRoot.currentPosition)
       );
 
-      console.log("new level for root user ", currentRoot.currentLevel);
+
 
       const currentRootParentPosition = getCurrentRootParentPosition(
         currentRoot.currentPosition
       );
 
-      console.log("currentRootParentPosition ", currentRootParentPosition);
+
 
       //update current root new positon,universalPlanetCount and parent;
 
@@ -933,10 +836,7 @@ async function transitionRootUserIfNeeded(
         },
       });
 
-      console.log(
-        "updateUniversalCountandParent ",
-        updateUniversalCountandParent
-      );
+ 
 
       const updatePlanetUnivseralCount = await db.planet.update({
         where: {
@@ -949,7 +849,7 @@ async function transitionRootUserIfNeeded(
         },
       });
 
-      console.log("updatePlanetUnivseralCount", updatePlanetUnivseralCount);
+
 
       if (nextRootUser) {
         await db.cosMosAutoPool.update({
@@ -987,7 +887,7 @@ async function transitionRootUserIfNeeded(
           },
         });
 
-        console.log("deleteAutopoolChildren", deleteAutopoolChildren);
+
 
         await distributeEarnings(
           currentRoot.id,
@@ -1043,11 +943,6 @@ export const distributeAutopoolEarning = async (
         },
       });
 
-      console.log("Updating parent record with id:", firstUserparent.id);
-      console.log("Connecting child record with id:", firstUser.id);
-
-      console.log("first user is ", firstUser);
-
       await db.cosMosAutoPool.update({
         where: { id: firstUserparent.id },
         data: {
@@ -1069,9 +964,13 @@ export const distributeAutopoolEarning = async (
       planetPrice
     );
 
-    console.log("current root is ---> ", currentRoot?.reg_user_address);
+
 
     const lastUserPosition = await db.cosMosAutoPool.findFirst({
+      where:{
+        planetName
+      },
+      
       orderBy: {
         currentPosition: "desc",
       },
@@ -1080,11 +979,11 @@ export const distributeAutopoolEarning = async (
       },
     });
 
-    console.log("lastUserPosition", lastUserPosition);
+
 
     const lastPositionValue = lastUserPosition?.currentPosition ?? 1;
 
-    console.log("lastPositionValue", lastPositionValue);
+
 
     let newPosition = lastPositionValue + 1;
 
@@ -1124,8 +1023,6 @@ export const distributeAutopoolEarning = async (
     });
 
     let currentUniversalCount = planetCount?.universalCount;
-    console.log("current universal planet count ", currentUniversalCount);
-    console.log("universalCount ", universalPlanetCount);
 
     if (!newParent) {
       throw new Error("something went wrong in create newParent");
@@ -1138,7 +1035,7 @@ export const distributeAutopoolEarning = async (
       },
     });
 
-    console.log("existingPool", existingPool);
+
 
     // Upsert to create or update the record
 
@@ -1208,6 +1105,8 @@ export const distributeAutopoolEarning = async (
       universalPlanetCount,
       planetPrice
     );
+
+    return "success";
   } catch (error) {
     console.log("something went wrong in distributeAutopoolEarning", error);
   }

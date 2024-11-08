@@ -4,6 +4,68 @@ import { db } from "@/db/db";
 import { ServerActionRes } from "../registartion";
 import { referralsArrayType, RegistereBulkTypes } from "./type";
 
+export const updateTotalTeam = async (wallet_address:string, i :number)=>{
+
+  try {
+
+    if(i > 10 ){
+      return;
+    }
+
+  
+
+    const user = await db.user.findFirst({
+      where:{
+        wallet_address
+      },
+      include:{
+        cosmosPlanets:true,
+      }
+    });
+
+    if(!user){
+      return;
+    }
+
+    const decendentCount = await db.ancestors.count({
+      where:{
+        wallet_address
+      }
+    })
+
+    console.log("decendent count "+decendentCount+"wallet address"+wallet_address)
+
+
+      const updateTotalTeamCount = await db.user.upsert({
+        where: {
+          wallet_address: wallet_address
+        },
+        update: {
+          totalTeam_Count: decendentCount, // Increment sponsor's direct team count
+        },
+        create: {
+          wallet_address: wallet_address,
+          totalTeam_Count: 0, 
+        },
+      });
+
+      console.log("updateTotalTeamCount",updateTotalTeamCount.totalTeam_Count+"user is "+updateTotalTeamCount.wallet_address+"i value "+i)
+
+    if(!user.sponser_address){
+      return
+    }
+
+    i = i+1
+    console.log("i is inc",i)
+
+    updateTotalTeam(user.sponser_address,i)
+
+  
+    
+  }catch (error) {
+    
+  }
+}
 
 
 export const updateAncestors = async (sponsor: string, currentUser: string) => {
@@ -22,63 +84,60 @@ export const updateAncestors = async (sponsor: string, currentUser: string) => {
       include: { ancestors: true },
     });
 
+
+    console.log("referrer is ",referrer?.wallet_address)
     if (!referrer) {
       throw new Error("Referrer not found");
     }
 
-    let updatedAncestors = [];
-    let referralSInArrray: referralsArrayType[] = [];
+    let stackAncestors: referralsArrayType[] = [];
 
-    if (referrer.ancestors.length === 0) {
-      updatedAncestors.push({
-        wallet_address: referrer.wallet_address,
-        ancestorsNumber: 1,
-      });
-    } else {
-      const pushAddressInArray = referrer.ancestors.forEach((user) => {
-        referralSInArrray.push({
-          id: user.id,
-          wallet_address: user.wallet_address,
-          ancestorsNumber: user.ancestorsNumber,
-        });
-      });
-
-      updatedAncestors = [
-        ...referralSInArrray,
-        {
-          wallet_address: referrer.wallet_address,
-          ancestorsNumber: referrer.ancestors.length + 1,
-        },
-      ];
-    }
-
-    if (updatedAncestors.length > 10) {
-      updatedAncestors = updatedAncestors.slice(-10);
-    }
-
-    console.log("updatedAncestors", updatedAncestors);
-
-    let totalTeam = updatedAncestors.map(async (data) => {
-      const updateDirectTeam = await db.user.upsert({
-        where: {
-          wallet_address: data.wallet_address,
-        },
-        update: {
-          totalTeam_Count: { increment: 1 }, // Increment sponsor's direct team count
-        },
-        create: {
-          wallet_address: data.wallet_address,
-          totalTeam_Count: 1, // If sponsor doesn't exist, create with count 1
-        },
-      });
+    // Push referrer to stack first
+    stackAncestors.push({
+      wallet_address: referrer.wallet_address,
+      ancestorsNumber: 1,
+      id:referrer.id
     });
 
-    const newAncestors = updatedAncestors.filter(
+    console.log("first push referrer",stackAncestors)
+
+    // Then, push referrer's ancestors to the stack
+    if(referrer.ancestors.length < 0){
+    
+    }
+    else{
+    const sortedAncestors = referrer.ancestors.sort(
+      (a, b) => a.ancestorsNumber - b.ancestorsNumber
+    );
+
+    console.log("sorted ancestors",sortedAncestors)
+
+    sortedAncestors.forEach((ancestor) => {
+      if (stackAncestors.length < 10) {
+
+        console.log("i am push in stack",ancestor.wallet_address)
+        stackAncestors.push({
+          id: ancestor.id,
+          wallet_address: ancestor.wallet_address,
+          ancestorsNumber: ancestor.ancestorsNumber + 1, // Increment ancestorsNumber accordingly
+        });
+      }
+    })
+  }
+
+
+    // No need to slice since we're already limiting to 10
+    console.log("stackAncestors after all push", stackAncestors);
+
+    // Remove any existing ancestors already in user's ancestors list
+    const newAncestors = stackAncestors.filter(
       (ancestor) =>
         !user.ancestors.some(
           (existing) => existing.wallet_address === ancestor.wallet_address
         )
     );
+
+    console.log('after removing exisitng one',newAncestors)
 
     if (newAncestors.length > 0) {
       const createAncestorsPromises = newAncestors.map((ancestor) =>
@@ -98,6 +157,7 @@ export const updateAncestors = async (sponsor: string, currentUser: string) => {
       console.log("No new ancestors to add");
     }
 
+    // Update user with new ancestors, connect them
     await db.user.update({
       where: { id: user.id },
       data: {
@@ -113,6 +173,7 @@ export const updateAncestors = async (sponsor: string, currentUser: string) => {
       include: { ancestors: true },
     });
 
+    // Update ancestorsNumber for the new ancestors
     const updateAncestorsNumberPromises = newAncestors.map((ancestor) =>
       db.ancestors.updateMany({
         where: {
@@ -126,6 +187,10 @@ export const updateAncestors = async (sponsor: string, currentUser: string) => {
     );
 
     await Promise.all(updateAncestorsNumberPromises);
+
+    let i = 0;
+
+     await updateTotalTeam(currentUser,i)
   } catch (error) {
     console.log("Something went wrong in the updateAncestors function", error);
   }
